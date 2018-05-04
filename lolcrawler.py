@@ -6,6 +6,7 @@ import random
 import traceback
 import datetime
 import json
+from collections import Counter
 
 import cassiopeia as cass
 from cassiopeia import Summoner, Match, Champions, Champion
@@ -117,6 +118,21 @@ def insertMatch(match, conn, champion2idx, item2idx, spell2idx):
             insertParticipant(p, conn, champion2idx, item2idx, spell2idx, match)
             # insert participant timeline
             insertParticipantTimeline(p, conn, match)
+
+        # After inserting participant, calculate the match's rank by selecting the most common one
+        # among 10 participants
+        try:
+            ranks = list(pd.read_sql(
+                "select rank_this_season from Summoner where Summoner.id in (select summoner_id from Participants where match_id={})".format(
+                    match.id), conn)['rank_this_season'])
+            match_rank=Counter(ranks)
+            match_rank=match_rank.most_common(1)[0][0]
+            print('match {} has average tier of {}.'.format(match.id,match_rank))
+            c.execute("UPDATE match SET tier = ? where id=?",(match_rank,match.id))
+        except:
+            traceback.print_exc()
+            print('error when updating match {} tier!'.format(match.id))
+
         if match.timeline == None or match.timeline.frames == None:
             print('This match{} does no have events!'.format(match.id))
             return
@@ -197,7 +213,7 @@ def insertTeamBan(match, conn, champion2idx):
         blueteam = match.blue_team
         blue_bans = blueteam.bans
         for bb in blue_bans:
-            if bb!=None:
+            if bb != None:
                 champion = Champion(id=bb.id)
                 c.execute("INSERT INTO team_ban (team_id,match_id,ban_champion) VALUES (?,?,?)",
                           (1, match.id, champion2idx[champion.name]))
@@ -205,7 +221,7 @@ def insertTeamBan(match, conn, champion2idx):
         redteam = match.red_team
         red_bans = redteam.bans
         for rb in red_bans:
-            if rb!=None:
+            if rb != None:
                 champion = Champion(id=rb.id)
                 c.execute("INSERT INTO team_ban (team_id,match_id,ban_champion) VALUES (?,?,?)",
                           (2, match.id, champion2idx[champion.name]))
@@ -220,10 +236,7 @@ def insertParticipantTimeline(participant, conn, match):
     try:
         timeline = participant.timeline
         creeps_per_min_deltas = json.dumps(timeline.creeps_per_min_deltas)
-        try:
-            cs_diff_per_min_deltas = json.dumps(timeline.cs_diff_per_min_deltas)
-        except:
-            cs_diff_per_min_deltas=None
+        cs_diff_per_min_deltas = json.dumps(timeline.cs_diff_per_min_deltas)
         damage_taken_diff_per_min_deltas = json.dumps(timeline.damage_taken_diff_per_min_deltas)
         gold_per_min_deltas = json.dumps(timeline.gold_per_min_deltas)
         damage_taken_per_min_deltas = json.dumps(timeline.damage_taken_per_min_deltas)
@@ -236,7 +249,7 @@ def insertParticipantTimeline(participant, conn, match):
         conn.commit()
     except:
         traceback.print_exc()
-        print('Insert Participant {} {}timeline info failed!'.format(participant.summoner.name,match.id))
+        print('Insert Participant {} {}timeline info failed!'.format(participant.summoner.name, match.id))
 
 
 def insertParticipant(participant, conn, champion2idx, counts, spell2idx, match):
@@ -254,9 +267,12 @@ def insertParticipant(participant, conn, champion2idx, counts, spell2idx, match)
         side = participant.side.name
         win = participant.team.win
         role = participant.role
-        if role!=None and type(role)!=str:
-            role=role.value
-        lane = participant.lane.value
+        if role != None and type(role) != str:
+            role = role.value
+        try:
+            lane = participant.lane.value
+        except:
+            lane=None
         sspell1 = spell2idx[participant.summoner_spell_d.name]
         sspell2 = spell2idx[participant.summoner_spell_f.name]
         level = stats.level
@@ -321,7 +337,8 @@ def insertParticipant(participant, conn, champion2idx, counts, spell2idx, match)
         conn.commit()
     except:
         traceback.print_exc()
-        print('Insert Participant {} , {}, {} failed!'.format(participant.id,participant.champion.name,participant.role))
+        print('Insert Participant {} , {}, {} failed!'.format(participant.id, participant.champion.name,
+                                                              participant.role))
 
 
 def enough(counts):
