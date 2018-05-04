@@ -7,7 +7,7 @@ import traceback
 import datetime
 
 import cassiopeia as cass
-from cassiopeia import Summoner, Match, Champions
+from cassiopeia import Summoner, Match, Champions, Champion
 from cassiopeia.data import Season, Queue, Tier
 
 DIAMOND = 10001
@@ -64,6 +64,17 @@ def getChampionsItemsAndSpells(conn):
     return champion2idx, item2idx, spell2idx
 
 
+def is_summoner_duplicate(summoner, conn):
+    try:
+        result = pd.read_sql('SELECT * FROM Summoner WHERE id={}'.format(summoner.id), conn).empty
+    except:
+        traceback.print_exc()
+        print('error during duplicating summoner!')
+        return True
+
+    return not result
+
+
 def insertSommoner(sommoner, conn, counts):
     c = conn.cursor()
     try:
@@ -77,28 +88,63 @@ def insertSommoner(sommoner, conn, counts):
         rank_last_season = sommoner.rank_last_season.value.lower()
         c.execute("INSERT INTO SUMMONER VALUES(?,?,?,?,?,?,?)",
                   (
-                  sommoner.id, sommoner.name, sommoner.region.value, sommoner.level, rank_this_season, rank_last_season,
-                  0))
+                      sommoner.id, sommoner.name, sommoner.region.value, sommoner.level, rank_this_season,
+                      rank_last_season,
+                      0))
         counts[rank_this_season] += 1
-        conn.commit()
     except:
         traceback.print_exc()
         print('Insert Sommner {} failed!'.format(sommoner.name))
 
 
-def insertMatch(match, conn):
+def insertMatch(match, conn, champion2idx, item2idx, spell2idx):
     c = conn.cursor()
     try:
         # Insert the match data first
         c.execute("INSERT INTO MATCH VALUES(?,?,?,?,?,?,?,?,?)", (
-        match.id, match.duration.total_seconds(), match.version, match.season.value, match.region.value,
-        match.queue.value, match.creation.timestamp, int(match.is_remake), 'unknown'))
-        # Then insert 
-
-        conn.commit()
+            match.id, match.duration.total_seconds(), match.version, match.season.value, match.region.value,
+            match.queue.value, match.creation.timestamp, int(match.is_remake), 'unknown'))
+        # insert teams info
+        insertTeams(conn, match)
+        # insert team ban info
+        insertTeamBan(match, conn, champion2idx)
+        # Then insert participants
+        participants = match.participants
+        for p in participants:
+            # insert every participant with its stats
+            insertParticipant(p, conn, champion2idx, item2idx, spell2idx, match)
+            # insert participant timeline
+            insertParticipantTimeline(p, conn, match)
+        if match.timeline == None or match.timeline.frames == None:
+            print('This match{} does no have events!'.format(match.id))
+            return
+        else:
+            for frame in match.timeline.frames:
+                events = frame.events
+                # insert kill champion and kill monster event
+                insertEvent(events, conn, match)
     except:
         traceback.print_exc()
         print('Insert match {} failed!'.format(match.id))
+
+
+def insertEvent(events, conn, match):
+    c = conn.cursor()
+    try:
+        for event in events:
+            if event == None:
+                continue
+            elif event.type == 'CHAMPION_KILL' and event.victim_id != None and event.killer_id != None:
+                c.execute('INSERT INTO kill_champion_event VALUES (?,?,?,?)',
+                          (match.id, event.victim_id, event.killer_id, event.timestamp))
+            elif event.type == 'ELITE_MONSTER_KILL' and event.monster_type != None and event.killer_id != None:
+                c.execute('INSERT INTO kill_monster_event VALUES (?,?,?,?)',
+                          (match.id, event.timestamp, event.killer_id, event.monster_type))
+    except:
+        traceback.print_exc()
+        print('Event error in match{} !'.format(match.id))
+
+    pass
 
 
 def is_match_duplicate(match, conn):
@@ -111,7 +157,153 @@ def is_match_duplicate(match, conn):
         return True
     return not result
 
-    pass
+
+"""
+Blue team id=1
+read tema id=2
+"""
+
+
+def insertTeams(conn, match):
+    c = conn.cursor()
+    try:
+        # Insert the blue team
+        blueteam = match.blue_team
+        c.execute("INSERT INTO Team VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+            1, match.id, 'blue', int(blueteam.win), blueteam.dragon_kills, blueteam.baron_kills,
+            blueteam.inhibitor_kills, blueteam.tower_kills, blueteam.first_blood, blueteam.first_dragon,
+            blueteam.first_baron, blueteam.first_tower, blueteam.first_rift_herald))
+        # Insert red team
+        redteam = match.red_team
+        c.execute("INSERT INTO Team VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+            2, match.id, 'red', int(redteam.win), redteam.dragon_kills, redteam.baron_kills,
+            redteam.inhibitor_kills, redteam.tower_kills, redteam.first_blood, redteam.first_dragon,
+            redteam.first_baron, redteam.first_tower, redteam.first_rift_herald))
+    except:
+        traceback.print_exc()
+        print('Insert match {} Team failed!'.format(match.id))
+
+
+def insertTeamBan(match, conn, champion2idx):
+    c = conn.cursor()
+    try:
+        # blue team ban
+        blueteam = match.blue_team
+        blue_bans = blueteam.bans
+        for bb in blue_bans:
+            champion = Champion(id=bb.id)
+            c.execute("INSERT INTO team_ban VALUES (?,?,?)", (1, match.id, champion2idx[champion.name]))
+        # red team ban
+        redteam = match.red_team
+        red_bans = redteam.bans
+        for rb in red_bans:
+            champion = Champion(id=rb.id)
+            c.execute("INSERT INTO team_ban VALUES (?,?,?)", (2, match.id, champion2idx[champion.name]))
+    except:
+        traceback.print_exc()
+        print('Insert Match {} Team ban failed!'.format(match.id))
+
+
+def insertParticipantTimeline(participant, conn, match):
+    c = conn.cursor()
+    try:
+        timeline = participant.timeline
+        creeps_per_min_deltas = timeline.creeps_per_min_deltas
+        cs_diff_per_min_deltas = timeline.cs_diff_per_min_deltas
+        damage_taken_diff_per_min_deltas = timeline.damage_taken_diff_per_min_deltas
+        gold_per_min_deltas = timeline.gold_per_min_deltas
+        damage_taken_per_min_deltas = timeline.damage_taken_per_min_deltas
+        xp_diff_per_min_deltas = timeline.xp_diff_per_min_deltas
+        xp_per_min_deltas = timeline.xp_per_min_deltas
+        c.execute("INSERT INTO participant_timeline VALUES (?,?,?,?,?,?,?,?,?,?)", (
+            participant.id, participant.summoner.id, match.id, creeps_per_min_deltas, cs_diff_per_min_deltas,
+            damage_taken_diff_per_min_deltas, gold_per_min_deltas, damage_taken_per_min_deltas, xp_diff_per_min_deltas,
+            xp_per_min_deltas))
+    except:
+        traceback.print_exc()
+        print('Insert Participant {} timeline info failed!'.format(participant.summoner.name))
+
+
+def insertParticipant(participant, conn, champion2idx, counts, spell2idx, match):
+    c = conn.cursor()
+    try:
+        summoner = participant.summoner
+        # insert this summoer if it's not included before
+        if not is_summoner_duplicate(summoner, conn):
+            insertSommoner(summoner, conn, counts)
+        stats = participant.stats
+        pid = participant.id
+        summoner_id = summoner.id
+        match_id = match.id
+        champion_id = champion2idx[participant.champion.name]
+        side = participant.side.name
+        win = participant.team.win
+        role = participant.role.value
+        lane = participant.lane.value
+        sspell1 = spell2idx[participant.summoner_spell_d.name]
+        sspell2 = spell2idx[participant.summoner_spell_f.name]
+        level = stats.level
+        items = []
+        for it in stats.items:
+            if it != None:
+                items.append(it.name)
+        items = ",".join(items)
+        kills = stats.kills
+        deaths = stats.deaths
+        assist = stats.assists
+        kda = stats.kda
+        turret_kills = stats.turret_kills
+        first_tower_kill = int(stats.first_tower_kill)
+        damage_dealt_to_turrets = stats.damage_dealt_to_turrets
+        first_blood_kill = int(stats.first_blood_kill)
+        double_kills = stats.double_kills
+        triple_kills = stats.triple_kills
+        quadra_kills = stats.quadra_kills
+        penta_kills = stats.penta_kills
+        killing_sprees = stats.killing_sprees
+        inhibitor_kills = stats.inhibitor_kills
+        gold_earned = stats.gold_earned
+        gold_spent = stats.gold_spent
+        largest_killing_spree = stats.largest_killing_spree
+        largest_critical_strike = stats.largest_critical_strike
+        largest_multi_kill = stats.largest_multi_kill
+        longest_time_spent_living = stats.longest_time_spent_living
+        magic_damage_dealt_to_champions = stats.magic_damage_dealt_to_champions
+        magical_damage_taken = stats.magical_damage_taken
+        neutral_minions_killed = stats.neutral_minions_killed
+        neutral_minions_killed_enemy_jungle = stats.neutral_minions_killed_enemy_jungle
+        physical_damage_dealt_to_champions = stats.physical_damage_dealt_to_champions
+        physical_damage_taken = stats.physical_damage_taken
+        sight_wards_bought_in_game = stats.sight_wards_bought_in_game
+        total_damage_dealt_to_champions = stats.total_damage_dealt_to_champions
+        total_damage_taken = stats.total_damage_taken
+        total_heal = stats.total_heal
+        total_minions_killed = stats.total_minions_killed
+        true_damage_dealt_to_champions = stats.true_damage_dealt_to_champions
+        true_damage_taken = stats.true_damage_taken
+        vision_wards_bought_in_game = stats.vision_wards_bought_in_game
+        wards_killed = stats.wards_killed
+        wards_placed = stats.wards_placed
+        time_CCing_others = stats.time_CCing_others
+
+        c.execute(
+            "INSERT INTO Participants VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                pid, summoner_id, match_id, champion_id, side, win, role, lane, sspell1, sspell2, level, items, kills,
+                deaths,
+                assist,
+                kda, turret_kills, first_tower_kill, damage_dealt_to_turrets, first_blood_kill, double_kills,
+                triple_kills,
+                quadra_kills, penta_kills, killing_sprees, inhibitor_kills, gold_earned, gold_spent,
+                largest_killing_spree, largest_critical_strike, largest_multi_kill, longest_time_spent_living,
+                magic_damage_dealt_to_champions, magical_damage_taken, neutral_minions_killed,
+                neutral_minions_killed_enemy_jungle, physical_damage_dealt_to_champions, physical_damage_taken,
+                sight_wards_bought_in_game, total_damage_dealt_to_champions, total_damage_taken, total_heal,
+                total_minions_killed, true_damage_dealt_to_champions, true_damage_taken, vision_wards_bought_in_game,
+                wards_killed, wards_placed, time_CCing_others))
+    except:
+        traceback.print_exc()
+        print('Insert Participant {} failed!'.format(participant.id))
 
 
 def enough(counts):
@@ -129,12 +321,12 @@ def main():
     2. Begin crawling
     """
     counts = {}
-    counts[Tier.diamond.lower()] = 0
-    counts[Tier.platinum.lower()] = 0
-    counts[Tier.gold.lower()] = 0
-    counts[Tier.silver.lower()] = 0
-    counts[Tier.bronze.lower()] = 0
-    counts[Tier.unranked.lower()] = 0
+    counts[Tier.diamond.value.lower()] = 0
+    counts[Tier.platinum.value.lower()] = 0
+    counts[Tier.gold.value.lower()] = 0
+    counts[Tier.silver.value.lower()] = 0
+    counts[Tier.bronze.value.lower()] = 0
+    counts[Tier.unranked.value.lower()] = 0
     invalid_summon = 0
     total_sommoner = 0
     match_total_num = 0
@@ -163,12 +355,9 @@ def main():
                 print('The summoner {} not exist!'.format(current_summoner))
                 invalid_summon += 1
                 continue
+            print('Begin crawl Summoner {}, he has {} matches in S8.'.format(current_summoner.name, len(allmatches)))
             # insert the current summoner into database
             insertSommoner(current_summoner, conn, counts)
-            # whether we have got enough data
-            if enough(counts):
-                is_enough = True
-                break
             # begin to visit all matches
             for match in allmatches:
                 match_total_num += 1
@@ -186,14 +375,27 @@ def main():
                 else:
                     match_valid_num += 1
                     # insert match
-                    insertMatch(match, conn)
+                    insertMatch(match, conn, champion2idx, counts, spell2idx)
+                    # whether we have got enough data
             # update summoner to be already crawled
             c = conn.cursor()
             c.execute("UPDATE Summoner SET is_crawler=1 WHERE id={}".format(current_summoner.id))
-            c.commit()
-
+            conn.commit()
+            if enough(counts):
+                is_enough = True
+                break
         if is_enough:
             break
+        unpulled_summoners = list(pd.read_sql("SELECT name from Summoner where is_crawler=0", conn)['name'])
+
+    print('Finish crawling!')
+    print(
+        'We have crawled {} summoners in total,{} diamond, {} platinum, {} gold, {} silver, {} bronze, {} unranked.'.format(
+            sum(counts.values()), counts['diamond'], counts['platinum'], counts['gold'], counts['silver'],
+            counts['bronze'], counts['unranked']))
+    print('We have crawled {} matches in total, {} error match, {} duplicate match, {} normal match'.format(
+        match_total_num, match_invalid_num + match_error[0], match_repeat_num-match_error[0], match_valid_num))
+    conn.close()
 
 
 if __name__ == '__main__':
