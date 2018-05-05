@@ -1,55 +1,20 @@
 
 # coding: utf-8
 
-# import cassiopeia as cass
 
+import sqlite3
+import pandas as pd
+import numpy as np
+# from collections import Counter
+# import cassiopeia as cass
 # from cassiopeia.data import Queue, GameMode, Season
 # from cassiopeia import SummonerSpell, SummonerSpells
 # import arrow
 # from cassiopeia.core import Summoner, MatchHistory, Match
-import sqlite3
-import pandas as pd
-import numpy as np
-from collections import Counter
+# import json
+# import time
+# import csv
 
-"""
-Todo:
-1. Basic data: Champions that are good at 
-(1). killing tower
-(2). first blood
-(3). monster KILLER(baron or dragon) [大龙杀手，小龙杀手，蓝爸爸红爸爸杀手], or 杀敌方野怪[最擅长入侵]最多
-(4). panta kill／。。。
-(5). 最肉tank [take most physical/magic//true demage ]
-(6). 最高输出 (physical/magic/true)
-(7). 补兵最多
-(8). 死的最多／存活率[时间]最高
-(9). 助攻王/击杀王
-(10). 控场王[timeCC]
-(11). 最容易连杀
-(12). 死亡频率较高[hidden senior case: 分析死亡数与消极游戏的联系]
-(13). most wards brought/killed (sight/vision) [插言／排眼，是一个好辅助的重要因素之一]
-(14). 最能奶的英雄(heal)
-(15). 红蓝方谁更容易赢
-(16). 推塔数／大龙数[baron]／小龙数[dragon]/峡谷先锋 与比赛输赢的关系
-(17). 暴击王
-2. 进阶data:
-(1). Big mistake, miss Skin!! Forgot to make it! [most popular skin, every hero's most popular skin, relationship between skin and win rate]
-(2). 英雄常用装备分析，推荐[游戏内已提供]
-(3). 英雄相克[交手战绩，杀／被杀次数，对线情况] ***
-(4). 最适合搭配队友[其实游戏中已被提供](可以个性化)  ****
-(5). 英雄走哪条路线胜率高 ***
-(6). 哪些是大后期，哪些后期废物(经济／输出比)
-(7). 利用kda，双方经济比，人头比预测比赛输赢  ****
-(8). 分析哪一路在游戏中最重要 (哪一路的双方经济／人头比对比赛结果影响最大)
-(9). 哪些英雄逆风局最容易翻盘(对敌方英雄输出最高，己方具有主要经济输出击杀等，己方总体经济／击杀落后于对方但最终取得胜利)
-(10). 英雄分类（战士，坦克，法师，射手，辅助，刺客。。。） *****
-
-3. 高级分析
-(1). 英雄个性化推荐
-(2). 召唤师技能[summoner spell]智能推荐,综合考虑每个英雄，走不同路线，对战不同英雄
-(3). 预测比赛输赢(同2.7)
-
-"""
 
 conn = sqlite3.connect('lol.db')
 def get_data(conn, table_name):
@@ -70,7 +35,6 @@ def get_position(p):
     else:
         return p[7]
 
-
 def ban_rate(champion_id, team_ban):
     champions = []
     for ban in team_ban:
@@ -84,10 +48,30 @@ def champion_data(champion_id, participants):
     kill = {}
     death = {}
     assist = {}
-    damage_to = {}
-    damage_taken = {}
-    gold = {}
+    physical_damage_to = {}
+    physical_damage_taken = {}
+    magic_damage_to = {}
+    magic_damage_taken = {}
+    true_damage_to = {}
+    true_damage_taken = {}
+    gold_earned = {}
+    gold_spent = {}
+    tower_kill = {}
+    minions_kill = {}
+    minions_kill_enemy = {}
+    first_blood = {}
+    total_heal = {}
+    time_CCing = {}
+    sight_ward = {}
+    vision_ward = {}
+    wards_killed = {}
+    wards_palced = {}
+    largest_killing_spree = {}
+    largest_critical_strike = {}
+    largest_multi_kill = {}
+    longest_living_time = {}
     res = {}
+    
     for p in participants:
         if p[3] == champion_id:
             pos = get_position(p)
@@ -100,9 +84,29 @@ def champion_data(champion_id, participants):
                     kill[pos].append(p[12])
                     death[pos].append(p[13])
                     assist[pos].append(p[14])
-                    damage_to[pos].append(p[-6])
-                    damage_taken[pos].append(p[-5])
-                    gold[pos].append(p[26])
+                    physical_damage_to[pos].append(p[36])
+                    physical_damage_taken[pos].append(p[37])
+                    magic_damage_to[pos].append(p[32])
+                    magic_damage_taken[pos].append(p[33])
+                    true_damage_to[pos].append(p[-6])
+                    true_damage_taken[pos].append(p[-5])
+                    gold_earned[pos].append(p[26])
+                    gold_spent[pos].append(p[27])
+                    tower_kill[pos].append(p[16])
+                    minions_kill[pos].append(p[34])
+                    minions_kill_enemy[pos].append(p[35])
+                    first_blood[pos].append(p[19])
+                    total_heal[pos].append(p[-8])
+                    time_CCing[pos].append(p[-1])
+                    sight_ward[pos].append(p[-11])
+                    vision_ward[pos].append(p[-4])
+                    wards_killed[pos].append(p[-3])
+                    wards_palced[pos].append(p[-2])
+                    largest_killing_spree[pos].append(p[28])
+                    largest_critical_strike[pos].append(p[29])
+                    largest_multi_kill[pos].append(p[30])
+                    longest_living_time[pos].append(p[31])
+                    
                     
                 else:
                     chosen_rate[pos] = 1
@@ -110,17 +114,57 @@ def champion_data(champion_id, participants):
                     kill[pos] = []
                     death[pos] = []
                     assist[pos] = []
-                    damage_to[pos] = []
-                    damage_taken[pos] = []
-                    gold[pos] = []
+                    physical_damage_to[pos] = []
+                    physical_damage_taken[pos] =[]
+                    magic_damage_to[pos] = []
+                    magic_damage_taken[pos] = []
+                    true_damage_to[pos] = []
+                    true_damage_taken[pos] = []
+                    gold_earned[pos] = []
+                    gold_spent[pos] = []
+                    tower_kill[pos] = []
+                    minions_kill[pos] = []
+                    minions_kill_enemy[pos] = []
+                    first_blood[pos] = []
+                    total_heal[pos] = []
+                    time_CCing[pos] = []
+                    sight_ward[pos] = []
+                    vision_ward[pos] = []
+                    wards_killed[pos] = []
+                    wards_palced[pos] = []
+                    largest_killing_spree[pos] = []
+                    largest_critical_strike[pos] = []
+                    largest_multi_kill[pos] = []
+                    longest_living_time[pos] = []
+
                     chosen_rate[pos]+=1
                     win_rate[pos].append(p[5])
                     kill[pos].append(p[12])
                     death[pos].append(p[13])
                     assist[pos].append(p[14])
-                    damage_to[pos].append(p[-6])
-                    damage_taken[pos].append(p[-5])
-                    gold[pos].append(p[26])
+                    physical_damage_to[pos].append(p[-9])
+                    physical_damage_taken[pos].append(p[-8])
+                    magic_damage_to[pos].append(p[-13])
+                    magic_damage_taken[pos].append(p[-12])
+                    true_damage_to[pos].append(p[-6])
+                    true_damage_taken[pos].append(p[-5])
+                    gold_earned[pos].append(p[26])
+                    gold_spent[pos].append(p[27])
+                    tower_kill[pos].append(p[16])
+                    minions_kill[pos].append(p[-11])
+                    minions_kill_enemy[pos].append(p[-10])
+                    first_blood[pos].append(p[19])
+                    total_heal[pos].append(p[-8])
+                    time_CCing[pos].append(p[-1])
+                    sight_ward[pos].append(p[-11])
+                    vision_ward[pos].append(p[-4])
+                    wards_killed[pos].append(p[-3])
+                    wards_palced[pos].append(p[-2])
+                    largest_killing_spree[pos].append(p[28])
+                    largest_critical_strike[pos].append(p[29])
+                    largest_multi_kill.append(p[30])
+                    longest_living_time[pos].append(p[31])
+                    
                     
     for r in chosen_rate:
         rate = chosen_rate[r]/len(participants)
@@ -135,26 +179,110 @@ def champion_data(champion_id, participants):
         res[d].append({'deaths': sum(death[d])/len(death[d])})
     for a in assist:
         res[a].append({'assists': sum(assist[a])/len(assist[a])})
-    for d in damage_to:
-        res[d].append({'total_damage_to': sum(damage_to[d])/len(damage_to[d])})
-    for d in damage_taken:
-        res[d].append({'total_damage_taken': sum(damage_taken[d])/len(damage_taken[d])})
-    for g in gold:
-        res[g].append({'gold_earned': sum(gold[g])/len(gold[g])})
+    for d in physical_damage_to:
+        res[d].append({'physical_damage_to': sum(physical_damage_to[d])/len(physical_damage_to[d])})
+    for d in physical_damage_taken:
+        res[d].append({'physical_damage_taken': sum(physical_damage_taken[d])/len(physical_damage_taken[d])})
+    
+    for d in magic_damage_to:
+        res[d].append({'magic_damage_to': sum(magic_damage_to[d])/len(magic_damage_to[d])})
+    for d in magic_damage_taken:
+        res[d].append({'magic_damage_taken': sum(magic_damage_taken[d])/len(magic_damage_taken[d])})
+    for d in true_damage_to:
+        res[d].append({'true_damage_to': sum(true_damage_to[d])/len(true_damage_to[d])})
+    for d in true_damage_taken:
+        res[d].append({'true_damage_taken': sum(true_damage_taken[d])/len(true_damage_taken[d])})
+    for g in gold_earned:
+        res[g].append({'gold_earned': sum(gold_earned[g])/len(gold_earned[g])})
+    for g in gold_spent:
+        res[g].append({'gold_spent': sum(gold_spent[g])/len(gold_spent[g])})
+    for t in tower_kill:
+        res[t].append({'tower_kill': sum(tower_kill[t])/len(tower_kill[t])})
+    for t in minions_kill:
+        res[t].append({'minions_kill': sum(minions_kill[t])/len(minions_kill[t])})
+    for t in minions_kill_enemy:
+        res[t].append({'minions_kill_enemy': sum(minions_kill_enemy[t])/len(minions_kill_enemy[t])})
+    for t in first_blood:
+        res[t].append({'first_blood': sum(first_blood[t])/len(first_blood[t])})
+    
+    for t in total_heal:
+        res[t].append({'total_heal': sum(total_heal[t])/len(total_heal[t])})
+    for t in time_CCing:
+        res[t].append({'time_CCing': sum(time_CCing[t])/len(time_CCing[t])})
+    for t in sight_ward:
+        res[t].append({'sight_ward': sum(sight_ward[t])/len(sight_ward[t])})
+    for t in vision_ward:
+        res[t].append({'vision_ward': sum(vision_ward[t])/len(vision_ward[t])})
+    for t in wards_killed:
+        res[t].append({'wards_killed': sum(wards_killed[t])/len(wards_killed[t])})
+    for t in wards_placed:
+        res[t].append({'wards_placed': sum(wards_placed[t])/len(wards_placed[t])})
+    for t in largest_killing_spree:
+        res[t].append({'largest_killing_spree': sum(largest_killing_spree[t])/len(largest_killing_spree[t])})
+    for t in largest_critical_strike:
+        res[t].append({'largest_critical_strike': sum(largest_critical_strike[t])/len(largest_critical_strike[t])})
+    for t in largest_multi_kill:
+        res[t].append({'largest_multi_kill': sum(largest_multi_kill[t])/len(largest_multi_kill[t])})
+    for t in longest_living_time:
+        res[t].append({'longest_living_time': sum(longest_living_time[t])/len(longest_living_time[t])})
     
     return res
-
-
 
 participants = get_data(conn, 'Participants')
 champion = get_data(conn, 'Champion')
 ban = get_data(conn, 'team_ban')
-print(champion)
+kill_monster_event = get_data(conn, 'kill_monster_event')
 
 all_data = []
+
 for c in champion:
     all_data.append(champion_data(c[0], participants))
-    print(c[1],champion_data(c[0], participants))
 print(all_data)
+
+
+"""
+Todo:
+1. Basic data: Champions that are good at 
+done(1). killing tower 
+done(2). first blood 
+done(3). monster KILLER(baron or dragon) [大龙杀手，小龙杀手，蓝爸爸红爸爸杀手], or 杀敌方野怪[最擅长入侵]最多
+(我觉得有连杀数应该就够了)(4). panta kill／。。。
+done(5). 最肉tank [take most physical/magic//true demage ]
+done(6). 最高输出 (physical/magic/true)
+(没找到这个属性) (7). 补兵最多
+done(8). 死的最多／存活率[时间]最高
+done(9). 助攻王/击杀王
+done(10). 控场王[timeCC]
+done(11). 最容易连杀
+done(12). 死亡频率较高[hidden senior case: 分析死亡数与消极游戏的联系]
+done(13). most wards brought/killed (sight/vision) [插言／排眼，是一个好辅助的重要因素之一]
+done(14). 最能奶的英雄(heal)
+(这个应该没有太大区别？)(15). 红蓝方谁更容易赢
+(to do)(16). 推塔数／大龙数[baron]／小龙数[dragon]/峡谷先锋 与比赛输赢的关系
+done(17). 暴击王
+
+2. 进阶data:
+(1). Big mistake, miss Skin!! Forgot to make it! [most popular skin, every hero's most popular skin, relationship between skin and win rate]
+(2). 英雄常用装备分析，推荐[游戏内已提供]
+(3). 英雄相克[交手战绩，杀／被杀次数，对线情况] ***
+(4). 最适合搭配队友[其实游戏中已被提供](可以个性化)  ****
+(5). 英雄走哪条路线胜率高 ***
+(6). 哪些是大后期，哪些后期废物(经济／输出比)
+(7). 利用kda，双方经济比，人头比预测比赛输赢  ****
+(8). 分析哪一路在游戏中最重要 (哪一路的双方经济／人头比对比赛结果影响最大)
+(9). 哪些英雄逆风局最容易翻盘(对敌方英雄输出最高，己方具有主要经济输出击杀等，己方总体经济／击杀落后于对方但最终取得胜利)
+(10). 英雄分类（战士，坦克，法师，射手，辅助，刺客。。。） *****
+
+3. 高级分析
+(1). 英雄个性化推荐
+(2). 召唤师技能[summoner spell]智能推荐,综合考虑每个英雄，走不同路线，对战不同英雄
+(3). 预测比赛输赢(同2.7)
+
+"""
+                
+
+
+    
+
 
 
