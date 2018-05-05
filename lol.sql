@@ -29,8 +29,8 @@ CREATE TABLE `Participants` (
   `champion_id` integer(128) NOT NULL,
   `side` text(20) NOT NULL,
   `win` integer(1) NOT NULL,
-  `role` text(30) NOT NULL,
-  `lane` text(30) NOT NULL,
+  `role` text(30),
+  `lane` text(30),
   `summoner_spell1` integer(5) NOT NULL,
   `summoner_spell2` integer(5) NOT NULL,
   `levels` integer(10) NOT NULL,
@@ -120,7 +120,7 @@ CREATE TABLE `item` (
 
 DROP TABLE IF EXISTS `kill_champion_event`;
 CREATE TABLE `kill_champion_event` (
-  `id` integer NOT NULL AUTO_INCREMENT,
+  `id` integer NOT NULL,
   `match_id` char(128) NOT NULL,
   `victim_id` integer(5) NOT NULL,
   `killer_id` integer(5) NOT NULL,
@@ -132,7 +132,7 @@ CREATE TABLE `kill_champion_event` (
 
 DROP TABLE IF EXISTS `kill_monster_event`;
 CREATE TABLE `kill_monster_event` (
-  `id` integer NOT NULL AUTO_INCREMENT,
+  `id` integer NOT NULL,
   `match_id` integer(128) NOT NULL,
   `timestamp` integer(128) NOT NULL,
   `killer_id` integer(5) NOT NULL,
@@ -147,13 +147,13 @@ CREATE TABLE `participant_timeline` (
   `id` integer NOT NULL,
   `summoner_id` integer(128) NOT NULL,
   `match_id` integer(128) NOT NULL,
-  `creeps_per_min_deltas` float(32) NOT NULL,
-  `cs_diff_per_min_deltas` float(32) NOT NULL,
-  `damage_taken_diff_per_min_deltas` float(32) NOT NULL,
-  `gold_per_min_deltas` float(32) NOT NULL,
-  `damage_taken_per_min_deltas` float(32) NOT NULL,
-  `xp_diff_per_min_deltas` float(32) NOT NULL,
-  `xp_per_min_deltas` float(128) NOT NULL,
+  `creeps_per_min_deltas` text(128) NOT NULL,
+  `cs_diff_per_min_deltas` text(128),
+  `damage_taken_diff_per_min_deltas` text(128) NOT NULL,
+  `gold_per_min_deltas` text(128) NOT NULL,
+  `damage_taken_per_min_deltas` text(128) NOT NULL,
+  `xp_diff_per_min_deltas` text(128) NOT NULL,
+  `xp_per_min_deltas` text(128) NOT NULL,
   PRIMARY KEY (`id`,`match_id`),
   FOREIGN KEY (summoner_id) REFERENCES Summoner (id),FOREIGN KEY (match_id) REFERENCES "Match" (id)
 );
@@ -169,7 +169,7 @@ CREATE TABLE `summoner_spell` (
 
 DROP TABLE IF EXISTS `team_ban`;
 CREATE TABLE `team_ban` (
-  `id` integer NOT NULL AUTO_INCREMENT,
+  `id` integer NOT NULL,
   `team_id` integer(128) NOT NULL,
   `match_id` integer(128) NOT NULL,
   `ban_champion` integer(128) NOT NULL,
