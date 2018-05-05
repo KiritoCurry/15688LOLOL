@@ -5,7 +5,7 @@ from sklearn import svm
 from sklearn.linear_model import BayesianRidge
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
-conn = sqlite3.connect('lol_copy.db')
+conn = sqlite3.connect('lol.db')
 
 def get_data(conn, table_name):
     res = []
