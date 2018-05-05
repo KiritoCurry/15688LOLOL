@@ -1,21 +1,11 @@
 import sqlite3
 import pandas as pd
 import numpy as np
+from sklearn import svm
+from sklearn.linear_model import BayesianRidge
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 conn = sqlite3.connect('lol_copy.db')
-
-
-def predict_lane():
-    for i, champion_data in enumerate(all_data):
-        best_rate = 0.0
-        best_lane = ""
-        for lane in champion_data.keys():
-            win_rate = champion_data[lane][1]['win_rate']
-            if win_rate > best_rate:
-                best_rate = win_rate
-                best_lane = lane
-        all_data[i]['lane_with_best_win_rate'] = lane
-    return
 
 def get_data(conn, table_name):
     res = []
@@ -228,10 +218,83 @@ def champion_data(champion_id, participants):
     
     return res
 
+
+def predict_lane():
+    for i, champion_data in enumerate(all_data):
+        best_rate = 0.0
+        best_lane = ""
+        for lane in champion_data.keys():
+            win_rate = champion_data[lane][1]['win_rate']
+            if win_rate > best_rate:
+                best_rate = win_rate
+                best_lane = lane
+        all_data[i]['lane_with_best_win_rate'] = lane
+    return
+
+
+def get_match_data(match, participants):
+    # kda, gold, kill
+    match_data = []
+    for m in match:
+        match_id = m[0]
+        curr_match = {'red':{'kills':0, 'kda': 0, 'income':0}, 'blue':{'kills':0, 'kda': 0, 'income':0}}
+        
+        win = ''
+        for p in participants:
+            if p[2] == match_id:
+                curr_match[p[4]]['kills'] += p[12]
+                curr_match[p[4]]['kda'] += p[15]
+                curr_match[p[4]]['income'] += p[26]
+                curr_match[p[4]]['income'] -= p[27]
+                
+                if p[5] == 1:
+                    win = p[4]
+                    
+        curr_match['win_side'] = win
+        match_data.append(curr_match)
+    
+    return match_data
+        
+def predict_result(match_id, match_data, verbose=False):
+    X = []
+    y = []
+    for i, match in enumerate(match_data):
+        X.append([])
+        # Avoid division by zero
+        X[i].append(match['red']['kda'] / (match['blue']['kda'] + 1e-6))
+        X[i].append(match['red']['income'] / (match['blue']['income'] + 1e-6))
+        X[i].append(match['red']['kills'] / (match['blue']['kills'] + 1e-6))
+        
+        if match['win_side'] == 'red':
+            y.append(0)
+        else:
+            y.append(1)
+   
+    scaler = MinMaxScaler()
+    clf = svm.SVC(C=1e10, max_iter=50, kernel='linear')
+    # clf = BayesianRidge(compute_score=True)
+    X = np.array(X)
+    y = np.array(y)
+    scaler.fit(X)
+    X_train = scaler.transform(X)
+    clf.fit(X_train, y)
+    if verbose:
+        ret = clf.predict(X_train)
+        tot = len(ret)
+        hit = 0
+        for pred, true in zip(ret, y):
+            if pred == true:
+                hit += 1
+        print("train_accuracy:{:.3f}".format(hit/tot))
+    
+    ret = clf.predict(X_train[match_id].reshape([1,-1]))
+    return 'red' if ret == 0 else 'blue'
+
 participants = get_data(conn, 'Participants')
 champion = get_data(conn, 'Champion')
 ban = get_data(conn, 'team_ban')
 kill_monster_event = get_data(conn, 'kill_monster_event')
+match = get_data(conn, 'Match')
 
 all_data = []
 
@@ -239,3 +302,6 @@ for c in champion:
     all_data.append(champion_data(c[0], participants))
 
 predict_lane()
+match_data = get_match_data(match, participants)
+
+predict_result(0, match_data, verbose=True)
