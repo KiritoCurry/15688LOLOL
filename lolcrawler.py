@@ -20,6 +20,32 @@ BRONZE = 10001
 match_error = [0]
 
 
+def is_resume(conn):
+    try:
+        result = pd.read_sql('SELECT * FROM Champion', conn).empty
+    except:
+        traceback.print_exc()
+        print('Cannot resume!')
+        return
+    return not result
+
+def resume_dicts(conn):
+    champions=list(pd.read_sql("SELECT name from Champion", conn)['name'])
+    champion2idx={}
+    for i,c in enumerate(champions):
+        champion2idx[c]=i
+
+    items=list(pd.read_sql("SELECT name from item", conn)['name'])
+    item2idx = {}
+    for i, item in enumerate(items):
+        item2idx[item] = i
+
+    spells=list(pd.read_sql("SELECT name from summoner_spell", conn)['name'])
+    spell2idx = {}
+    for i, spell in enumerate(spells):
+        spell2idx[spell] = i
+    return champion2idx,item2idx,spell2idx
+
 def initializeSeed(filename):
     seeds = []
     raw_data = pd.read_csv(filename)
@@ -351,10 +377,7 @@ def enough(counts):
 def main():
     cass.set_riot_api_key("RGAPI-fc286f72-6f80-46c3-90ae-2de6d30f6463")
     cass.set_default_region("NA")
-    """
-    1. Initialize seedfiles
-    2. Begin crawling
-    """
+    conn = sqlite3.connect('lol.db')
     counts = {}
     counts[Tier.diamond.value.lower()] = 0
     counts[Tier.platinum.value.lower()] = 0
@@ -369,10 +392,19 @@ def main():
     match_invalid_num = 0
     match_valid_num = 0
 
-    conn = sqlite3.connect('lol.db')
-    unpulled_summoners = initializeSeed('seed.csv')
-    # get champion, item, spells maps
-    champion2idx, item2idx, spell2idx = getChampionsItemsAndSpells(conn)
+    is_seed=True
+    """
+    1. Initialize seedfiles
+    2. Begin crawling
+    """
+    if is_resume(conn):
+        print('Crawler resume. Count Restart.')
+        unpulled_summoners = list(pd.read_sql("SELECT name from Summoner where is_crawler=0", conn)['name'])
+        champion2idx, item2idx, spell2idx=resume_dicts(conn)
+    else:
+        unpulled_summoners = initializeSeed('seed.csv')
+        # get champion, item, spells maps
+        champion2idx, item2idx, spell2idx = getChampionsItemsAndSpells(conn)
     while len(unpulled_summoners) > 0:
         is_enough = False
         random.shuffle(unpulled_summoners)
@@ -391,8 +423,9 @@ def main():
                 invalid_summon += 1
                 continue
             print('Begin crawl Summoner {}, he has {} matches in S8.'.format(current_summoner.name, len(allmatches)))
-            # insert the current summoner into database
-            insertSommoner(current_summoner, conn, counts)
+            # insert the current summoner into database if this is first loop
+            if is_seed and not is_summoner_duplicate(current_summoner,conn):
+                insertSommoner(current_summoner, conn, counts)
             # begin to visit all matches
             for match in allmatches:
                 match_total_num += 1
@@ -421,6 +454,7 @@ def main():
                 break
         if is_enough:
             break
+        is_seed=False
         unpulled_summoners = list(pd.read_sql("SELECT name from Summoner where is_crawler=0", conn)['name'])
 
     print('Finish crawling!')
