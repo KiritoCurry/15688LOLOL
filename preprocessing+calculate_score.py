@@ -1,15 +1,7 @@
 import sqlite3
 import pandas as pd
 import numpy as np
-from collections import Counter
-# import cassiopeia as cass
-# from cassiopeia.data import Queue, GameMode, Season
-# from cassiopeia import SummonerSpell, SummonerSpells
-# import arrow
-# from cassiopeia.core import Summoner, MatchHistory, Match
-# import json
-# import time
-# import csv
+
 
 conn = sqlite3.connect('lol.db')
 def get_data(conn, table_name):
@@ -223,7 +215,6 @@ def champion_data(champion_id, participants):
     
     return res
 
-
 participants = get_data(conn, 'Participants')
 champion = get_data(conn, 'Champion')
 ban = get_data(conn, 'team_ban')
@@ -244,52 +235,87 @@ def calculate_rate(data, average):
 def calculate_score(data_set, position):
     train_scores = []
     sums = []
+    jungle = []
+    top = []
+    mid = []
+    adc = []
+    support = []
+    
     for i in range(len(data_set)):
         d = data_set[i]
         try:
             if position[i] == 'JUNGLE':
-                s = 10*d[0]+8*d[1]-8*d[2]+6*d[3] +8*d[4]+8*d[5]+6*d[6]+8*d[7]+10*d[8]+10*d[9] 
-                +8*d[10]-6*d[11] +4*d[12]+10*d[13]+10*d[14] +4*d[15]+6*d[16]+6*d[17]
-                +d[18]+d[19]+d[20]+d[21]+6*d[22]+6*d[23]+6*d[24]+6*d[25]
+                s = 30*d[0]+30*d[1]-20*d[2]+30*d[3] +30*(d[4]+d[6]+d[8])+ 10*(d[5]+d[7]+d[9])
+                +6*d[11]+d[12]+ 30*d[13]+40*d[14]+d[15]+d[16]+20*d[17]
+                +(d[18]+d[19]+d[20]+d[21])+5*d[22]+5*d[23]+5*d[24]+5*d[25]
                 sums.append(s)
+                jungle.append(s)
 
             elif position[i] == 'TOP_LANE':
-                s = 10*d[0]+8*d[1]-8*d[2]+6*d[3] +8*d[4]+8*d[5]+6*d[6]+8*d[7]+10*d[8]+10*d[9]
-                +8*d[10]-6*d[11] +8*d[12]+8*d[13]+8*d[14] +6*d[15]+6*d[16]+6*d[17]
-                +2*d[18]+2*d[19]+2*d[20]+2*d[21]+6*d[22]+6*d[23]+6*d[24]+6*d[25]
+                s = 30*d[0]+20*d[1]-20*d[2]+20*d[3] + 20*(d[4]+d[6]+d[8])+10*(d[5]+d[7]+d[9])
+                +6*d[11] +d[12]+d[13]+8*d[14] +6*d[15]+d[16]+20*d[17]
+                +(d[18]+d[19]+d[20]+d[21])+5*d[22]+5*d[23]+5*d[24]+5*d[25]
                 sums.append(s)
+                top.append(s)
 
             elif position[i] == 'MID_LANE':
-                s = 10*d[0]+8*d[1]-8*d[2]+6*d[3]+6*d[4]+6*d[5]+12*d[6]+6*d[7]+10*d[8]+10*d[9]
-                +8*d[10]-6*d[11] +8*d[12]+5*d[13]+5*d[14] +6*d[15]+6*d[16]+6*d[17]
-                +2*d[18]+2*d[19]+2*d[20]+2*d[21]+6*d[22]+6*d[23]+6*d[24]+6*d[25]
+                s = 30*d[0]+30*d[1]-20*d[2]+20*d[3] +30*(d[4]+d[6]+d[8])+ 10*(d[5]+d[7]+d[9])
+                +6*d[11] +d[12]+d[13]+5*d[14] +6*d[15]+d[16]+30*d[17]
+                +(d[18]+d[19]+d[20]+d[21])+5*d[22]+5*d[23]+5*d[24]+5*d[25]
                 sums.append(s)
+                mid.append(s)
 
             elif position[i] == 'DUO_CARRY':
-                s = 10*d[0]+8*d[1]-8*d[2]+6*d[3]+8*d[4]+8*d[5]+6*d[6]+8*d[7]+10*d[8]+10*d[9]
-                +8*d[10]-6*d[11] +6*d[12]+6*d[13]+6*d[14] +6*d[15]+6*d[16]+6*d[17]
-                +2*d[18]+2*d[19]+2*d[20]+2*d[21]+6*d[22]+6*d[23]+6*d[24]+6*d[25]
+                s = 30*d[0]+30*d[1]-25*d[2]+10*d[3]+30*(d[4]+d[6]+d[8])+10*(d[5]+d[7]+d[9])
+                +8*d[11] +d[12]+d[13]+6*d[14] +6*d[15]+d[16]+20*d[17]
+                +(d[18]+d[19]+d[20]+d[21])+20*d[22]+20*d[23]+5*d[24]+20*d[25]
                 sums.append(s)
+                adc.append(s)
 
             elif position[i] == 'DUO_SUPPORT':
-                s = 2*d[0]+2*d[1]-2*d[2]+1.5*d[3]+8*d[4]+8*d[5]+6*d[6]+8*d[7]+10*d[8]+10*d[9]
-                +8*d[10]-6*d[11] +6*d[12]+6*d[13]+6*d[14] +6*d[15]+6*d[16]+6*d[17]
-                +6*d[18]+6*d[19]+6*d[20]+6*d[21]+4*d[22]+4*d[23]+4*d[24]+4*d[25]
+                s = 30*d[0]+20*d[1]-10*d[2]+30*d[3]+10*(d[4]+d[6]+d[8])+ 20*(d[5]+d[7]+d[9])
+                +4*d[11] +6*d[12]+d[13]+6*d[14] +6*d[15]+10*d[16]+30*d[17]
+                +30*(d[18]+d[19]+d[20]+d[21])+5*d[22]+5*d[23]+5*d[24]+5*d[25]
                 sums.append(s)
+                support.append(s)
+            else:
+                sums.append('unknown')
+
         except TypeError:
             sums.append('unknown')
             
-#     print(sums)
-    nums = []
-    for i in sums:
-        if i != 'unknown':
-            nums.append(i)
-    maxi = max(nums)
-    mini = min(nums)
-    for s in sums:
-        if s != 'unknown':
-            unit = 98/(maxi-mini)
-            train_scores.append((s-mini)*unit + 1)
+    jungle_max = max(jungle)
+    jungle_min = min(jungle)
+    top_max = max(top)
+    top_min = min(top)
+    mid_max = max(mid)
+    mid_min = min(mid)
+    adc_max = max(adc)
+    adc_min = min(adc)
+    support_max = max(support)
+    support_min = min(support)
+    
+#     print(adc_max, adc_min)
+#     print(support_max, support_min)
+    for i in range(len(sums)):
+        if sums[i] != 'unknown':
+            if position[i] == 'JUNGLE':
+                unit = 98/(jungle_max-jungle_min)
+                train_scores.append((sums[i]-jungle_min)*unit + 1)
+            elif position[i] == 'TOP_LANE':
+                unit = 98/(top_max-top_min)
+                train_scores.append((sums[i]-top_min)*unit + 1)
+            elif position[i] == 'MID_LANE':
+                unit = 98/(mid_max-mid_min)
+                train_scores.append((sums[i]-mid_min)*unit + 1)
+            elif position[i] == 'DUO_CARRY':
+                unit = 98/(adc_max-adc_min)
+                train_scores.append((sums[i]-adc_min)*unit + 1)
+            elif position[i] == 'DUO_SUPPORT':
+                unit = 98/(support_max-support_min)
+                train_scores.append((sums[i]-support_min)*unit + 1)
+            else:
+                train_scores.append(0)
         else:
             train_scores.append(0)
     return train_scores    
@@ -322,6 +348,15 @@ for each in train[0:1000]:
 
 train_scores = calculate_score(train_rate, positions)
 print(train_scores)
+
+# from sklearn.svm import SVC
+# from sklearn.preprocessing import MinMaxScaler
+# scaler = MinMaxScaler()
+# scaler.fit(X)
+# X_train = scaler.transform(X)
+
+
+# In[ ]:
 
 
 """
