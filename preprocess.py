@@ -243,15 +243,27 @@ def get_match_data(match, participants):
     match_data = []
     for m in match:
         match_id = m[0]
-        curr_match = {'red':{'kills':0, 'kda': 0, 'income':0, 'lane':{}}, 'blue':{'kills':0, 'kda': 0, 'income':0, 'lane':{}}}
+        curr_match = {'red':{'total':{'kills':0, 'kda': 0, 'income':0}, 'by_lane':{}}, 'blue':{'total':{'kills':0, 'kda': 0, 'income':0}, 'by_lane':{}}}
         
         win = ''
         for p in participants:
             if p[2] == match_id:
-                curr_match[p[4]]['kills'] += p[12]
-                curr_match[p[4]]['kda'] += p[15]
-                curr_match[p[4]]['income'] += p[26]
-                curr_match[p[4]]['income'] -= p[27]
+                curr_match[p[4]]['total']['kills'] += p[12]
+                curr_match[p[4]]['total']['kda'] += p[15]
+                curr_match[p[4]]['total']['income'] += p[26]
+                curr_match[p[4]]['total']['income'] -= p[27]
+                
+                if p[7] not in curr_match[p[4]]['by_lane'].keys():
+                    curr_match[p[4]]['by_lane'][p[7]] = {}
+                    curr_match[p[4]]['by_lane'][p[7]]['kills'] = 0
+                    curr_match[p[4]]['by_lane'][p[7]]['kda'] = 0
+                    curr_match[p[4]]['by_lane'][p[7]]['income'] = 0
+                    curr_match[p[4]]['by_lane'][p[7]]['income'] = 0
+                    
+                curr_match[p[4]]['by_lane'][p[7]]['kills'] += p[12]
+                curr_match[p[4]]['by_lane'][p[7]]['kda'] += p[15]
+                curr_match[p[4]]['by_lane'][p[7]]['income'] += p[26]
+                curr_match[p[4]]['by_lane'][p[7]]['income'] -= p[27]
                 
                 if p[5] == 1:
                     win = p[4]
@@ -276,9 +288,9 @@ def predict_result(match_id, match_data, verbose=False):
     for i, match in enumerate(match_data):
         X.append([])
         # Avoid division by zero
-        X[i].append(match['red']['kda'] / (match['blue']['kda'] + 1e-6))
-        X[i].append(match['red']['income'] / (match['blue']['income'] + 1e-6))
-        X[i].append(match['red']['kills'] / (match['blue']['kills'] + 1e-6))
+        X[i].append(match['red']['total']['kda'] / (match['blue']['total']['kda'] + 1e-6))
+        X[i].append(match['red']['total']['income'] / (match['blue']['total']['income'] + 1e-6))
+        X[i].append(match['red']['total']['kills'] / (match['blue']['total']['kills'] + 1e-6))
         
         if match['win_side'] == 'red':
             y.append(0)
@@ -313,9 +325,54 @@ Input:
 Output:
     the lane has the most impact on the final outcome of the match
     """
-def which_lane(match_data):
-    pass
-
+def which_lane(match_data, verbose=False):
+    lane_dict = {}
+    for match in match_data:
+        for lane in match['red']['by_lane'].keys():
+            if lane not in match['blue']['by_lane'].keys():
+                continue
+            
+            if lane not in lane_dict.keys():
+                lane_dict[lane] = []
+            
+            kda = match['red']['by_lane'][lane]['kda'] / (match['blue']['by_lane'][lane]['kda'] + 1e-6)
+            
+            income = match['red']['by_lane'][lane]['income'] / (match['blue']['by_lane'][lane]['income'] + 1e-6)
+            
+            kill = match['red']['by_lane'][lane]['kills'] / (match['blue']['by_lane'][lane]['kills'] + 1e-6)
+            
+            win = 0 if match['win_side'] == 'red' else 1
+            lane_dict[lane].append([kda, income, kill, win])
+    # print(lane_dict)
+    lanelist = [lane for lane in lane_dict.keys()]
+    best_acc = 0.0
+    the_lane = ''
+    for lane, lane_data in lane_dict.items():
+        if lane == None:
+            continue
+        lane_data = np.array(lane_data)
+        X = lane_data[:,:3]
+        y = lane_data[:,-1]
+        scaler = MinMaxScaler()
+        clf = svm.SVC(C=1e10, max_iter=500, kernel='linear')
+    
+        scaler.fit(X)
+        X_train = scaler.transform(X)
+        clf.fit(X_train, y)
+        ret = clf.predict(X_train)
+        tot = len(ret)
+        hit = 0
+        for pred, true in zip(ret, y):
+            if pred == true:
+                hit += 1
+        acc = hit/tot
+        if verbose:
+            print("{} : {:.3f}".format(lane, acc))
+        if acc > best_acc:
+            best_acc = acc
+            the_lane = lane
+    
+    return the_lane
 
 participants = get_data(conn, 'Participants')
 champion = get_data(conn, 'Champion')
@@ -328,7 +385,8 @@ all_data = []
 for c in champion:
     all_data.append(champion_data(c[0], participants))
 
-lane = predict_lane()
+# lane = predict_lane()
 match_data = get_match_data(match, participants)
-predict_result(0, match_data, verbose=True)
-# print(which_lane(match_data))
+# print(match_data[0])
+# predict_result(0, match_data, verbose=True)
+# print(which_lane(match_data, verbose=True))
