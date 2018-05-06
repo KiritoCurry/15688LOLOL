@@ -220,6 +220,7 @@ def champion_data(champion_id, participants):
 
 
 def predict_lane():
+    ret = []
     for i, champion_data in enumerate(all_data):
         best_rate = 0.0
         best_lane = ""
@@ -228,16 +229,21 @@ def predict_lane():
             if win_rate > best_rate:
                 best_rate = win_rate
                 best_lane = lane
-        all_data[i]['lane_with_best_win_rate'] = lane
-    return
+        #all_data[i]['lane_with_best_win_rate'] = lane
+        ret.append(lane)
+    return ret
 
+"""
+Relational match_data by merging the match and participants dataset
+***** Under Construction *****
+"""
 
 def get_match_data(match, participants):
     # kda, gold, kill
     match_data = []
     for m in match:
         match_id = m[0]
-        curr_match = {'red':{'kills':0, 'kda': 0, 'income':0}, 'blue':{'kills':0, 'kda': 0, 'income':0}}
+        curr_match = {'red':{'kills':0, 'kda': 0, 'income':0, 'lane':{}}, 'blue':{'kills':0, 'kda': 0, 'income':0, 'lane':{}}}
         
         win = ''
         for p in participants:
@@ -254,7 +260,16 @@ def get_match_data(match, participants):
         match_data.append(curr_match)
     
     return match_data
-        
+
+"""
+Prediction on the final outcome of the game
+Input:
+    match_id: the match to be predicted
+    match_data: match_data saved at dict
+Output:
+    predicted wining side
+    """
+
 def predict_result(match_id, match_data, verbose=False):
     X = []
     y = []
@@ -271,7 +286,7 @@ def predict_result(match_id, match_data, verbose=False):
             y.append(1)
    
     scaler = MinMaxScaler()
-    clf = svm.SVC(C=1e10, max_iter=50, kernel='linear')
+    clf = svm.SVC(C=1e10, kernel='linear')
     # clf = BayesianRidge(compute_score=True)
     X = np.array(X)
     y = np.array(y)
@@ -290,6 +305,18 @@ def predict_result(match_id, match_data, verbose=False):
     ret = clf.predict(X_train[match_id].reshape([1,-1]))
     return 'red' if ret == 0 else 'blue'
 
+
+"""
+Analysis on which LANE has the most impact on the final outcome of the match
+Input:
+    match_data: match_data saved at dict
+Output:
+    the lane has the most impact on the final outcome of the match
+    """
+def which_lane(match_data):
+    pass
+
+
 participants = get_data(conn, 'Participants')
 champion = get_data(conn, 'Champion')
 ban = get_data(conn, 'team_ban')
@@ -301,7 +328,7 @@ all_data = []
 for c in champion:
     all_data.append(champion_data(c[0], participants))
 
-predict_lane()
+lane = predict_lane()
 match_data = get_match_data(match, participants)
-
 predict_result(0, match_data, verbose=True)
+# print(which_lane(match_data))
