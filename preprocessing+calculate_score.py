@@ -1,11 +1,7 @@
-
-# coding: utf-8
-
-
 import sqlite3
 import pandas as pd
 import numpy as np
-# from collections import Counter
+from collections import Counter
 # import cassiopeia as cass
 # from cassiopeia.data import Queue, GameMode, Season
 # from cassiopeia import SummonerSpell, SummonerSpells
@@ -14,7 +10,6 @@ import numpy as np
 # import json
 # import time
 # import csv
-
 
 conn = sqlite3.connect('lol.db')
 def get_data(conn, table_name):
@@ -65,7 +60,7 @@ def champion_data(champion_id, participants):
     sight_ward = {}
     vision_ward = {}
     wards_killed = {}
-    wards_palced = {}
+    wards_placed = {}
     largest_killing_spree = {}
     largest_critical_strike = {}
     largest_multi_kill = {}
@@ -101,7 +96,7 @@ def champion_data(champion_id, participants):
                     sight_ward[pos].append(p[-11])
                     vision_ward[pos].append(p[-4])
                     wards_killed[pos].append(p[-3])
-                    wards_palced[pos].append(p[-2])
+                    wards_placed[pos].append(p[-2])
                     largest_killing_spree[pos].append(p[28])
                     largest_critical_strike[pos].append(p[29])
                     largest_multi_kill[pos].append(p[30])
@@ -131,7 +126,7 @@ def champion_data(champion_id, participants):
                     sight_ward[pos] = []
                     vision_ward[pos] = []
                     wards_killed[pos] = []
-                    wards_palced[pos] = []
+                    wards_placed[pos] = []
                     largest_killing_spree[pos] = []
                     largest_critical_strike[pos] = []
                     largest_multi_kill[pos] = []
@@ -142,27 +137,27 @@ def champion_data(champion_id, participants):
                     kill[pos].append(p[12])
                     death[pos].append(p[13])
                     assist[pos].append(p[14])
-                    physical_damage_to[pos].append(p[-9])
-                    physical_damage_taken[pos].append(p[-8])
-                    magic_damage_to[pos].append(p[-13])
-                    magic_damage_taken[pos].append(p[-12])
+                    physical_damage_to[pos].append(p[36])
+                    physical_damage_taken[pos].append(p[37])
+                    magic_damage_to[pos].append(p[32])
+                    magic_damage_taken[pos].append(p[33])
                     true_damage_to[pos].append(p[-6])
                     true_damage_taken[pos].append(p[-5])
                     gold_earned[pos].append(p[26])
                     gold_spent[pos].append(p[27])
                     tower_kill[pos].append(p[16])
-                    minions_kill[pos].append(p[-11])
-                    minions_kill_enemy[pos].append(p[-10])
+                    minions_kill[pos].append(p[34])
+                    minions_kill_enemy[pos].append(p[35])
                     first_blood[pos].append(p[19])
                     total_heal[pos].append(p[-8])
                     time_CCing[pos].append(p[-1])
                     sight_ward[pos].append(p[-11])
                     vision_ward[pos].append(p[-4])
                     wards_killed[pos].append(p[-3])
-                    wards_palced[pos].append(p[-2])
+                    wards_placed[pos].append(p[-2])
                     largest_killing_spree[pos].append(p[28])
                     largest_critical_strike[pos].append(p[29])
-                    largest_multi_kill.append(p[30])
+                    largest_multi_kill[pos].append(p[30])
                     longest_living_time[pos].append(p[31])
                     
                     
@@ -228,16 +223,105 @@ def champion_data(champion_id, participants):
     
     return res
 
+
 participants = get_data(conn, 'Participants')
 champion = get_data(conn, 'Champion')
 ban = get_data(conn, 'team_ban')
-kill_monster_event = get_data(conn, 'kill_monster_event')
-
-all_data = []
-
+# kill_monster_event = get_data(conn, 'kill_monster_event')
+train = participants[0:10400]
+test = participants[10400:]
+train_data = []
+# test_data = {}
 for c in champion:
-    all_data.append(champion_data(c[0], participants))
-print(all_data)
+    train_data.append(champion_data(c[0], train))
+# print(train_data)
+
+def calculate_rate(data, average):
+    if data == 0:
+        return 0
+    return (data-average)/data
+
+def calculate_score(data_set, position):
+    train_scores = []
+    sums = []
+    for i in range(len(data_set)):
+        d = data_set[i]
+        try:
+            if position[i] == 'JUNGLE':
+                s = 10*d[0]+8*d[1]-8*d[2]+6*d[3] +8*d[4]+8*d[5]+6*d[6]+8*d[7]+10*d[8]+10*d[9] 
+                +8*d[10]-6*d[11] +4*d[12]+10*d[13]+10*d[14] +4*d[15]+6*d[16]+6*d[17]
+                +d[18]+d[19]+d[20]+d[21]+6*d[22]+6*d[23]+6*d[24]+6*d[25]
+                sums.append(s)
+
+            elif position[i] == 'TOP_LANE':
+                s = 10*d[0]+8*d[1]-8*d[2]+6*d[3] +8*d[4]+8*d[5]+6*d[6]+8*d[7]+10*d[8]+10*d[9]
+                +8*d[10]-6*d[11] +8*d[12]+8*d[13]+8*d[14] +6*d[15]+6*d[16]+6*d[17]
+                +2*d[18]+2*d[19]+2*d[20]+2*d[21]+6*d[22]+6*d[23]+6*d[24]+6*d[25]
+                sums.append(s)
+
+            elif position[i] == 'MID_LANE':
+                s = 10*d[0]+8*d[1]-8*d[2]+6*d[3]+6*d[4]+6*d[5]+12*d[6]+6*d[7]+10*d[8]+10*d[9]
+                +8*d[10]-6*d[11] +8*d[12]+5*d[13]+5*d[14] +6*d[15]+6*d[16]+6*d[17]
+                +2*d[18]+2*d[19]+2*d[20]+2*d[21]+6*d[22]+6*d[23]+6*d[24]+6*d[25]
+                sums.append(s)
+
+            elif position[i] == 'DUO_CARRY':
+                s = 10*d[0]+8*d[1]-8*d[2]+6*d[3]+8*d[4]+8*d[5]+6*d[6]+8*d[7]+10*d[8]+10*d[9]
+                +8*d[10]-6*d[11] +6*d[12]+6*d[13]+6*d[14] +6*d[15]+6*d[16]+6*d[17]
+                +2*d[18]+2*d[19]+2*d[20]+2*d[21]+6*d[22]+6*d[23]+6*d[24]+6*d[25]
+                sums.append(s)
+
+            elif position[i] == 'DUO_SUPPORT':
+                s = 2*d[0]+2*d[1]-2*d[2]+1.5*d[3]+8*d[4]+8*d[5]+6*d[6]+8*d[7]+10*d[8]+10*d[9]
+                +8*d[10]-6*d[11] +6*d[12]+6*d[13]+6*d[14] +6*d[15]+6*d[16]+6*d[17]
+                +6*d[18]+6*d[19]+6*d[20]+6*d[21]+4*d[22]+4*d[23]+4*d[24]+4*d[25]
+                sums.append(s)
+        except TypeError:
+            sums.append('unknown')
+            
+#     print(sums)
+    nums = []
+    for i in sums:
+        if i != 'unknown':
+            nums.append(i)
+    maxi = max(nums)
+    mini = min(nums)
+    for s in sums:
+        if s != 'unknown':
+            unit = 98/(maxi-mini)
+            train_scores.append((s-mini)*unit + 1)
+        else:
+            train_scores.append(0)
+    return train_scores    
+
+train_rate = []
+positions = []
+
+
+for each in train[0:1000]:
+    champion_datas = train_data[each[3]]
+    if each[6] in champion_datas:
+        champion_datas = champion_datas[each[6]]
+        positions.append(each[6])
+    elif each[7] in champion_datas:
+        champion_datas = champion_datas[each[7]]
+        positions.append(each[7])
+    else:
+        train_rate.append(0)
+        positions.append(each[6])
+        continue
+    parti_data = [each[5], each[12], each[13], each[14], each[-9], each[-8], each[-13], each[-12], each[-6], each[-5],
+                 each[26], each[27], each[16], each[-11], each[-10], each[19], each[-8], each[-1], each[-11], each[-4]
+                 , each[-3], each[-2], each[28], each[29], each[30], each[31]]
+    champion_datas = champion_datas[1:]
+
+    rate = []
+    for i in range(len(champion_datas)):
+        rate.append(calculate_rate(parti_data[i], list(champion_datas[i].values())[0]))   
+    train_rate.append(rate)
+
+train_scores = calculate_score(train_rate, positions)
+print(train_scores)
 
 
 """
@@ -279,10 +363,4 @@ done(17). 暴击王
 (3). 预测比赛输赢(同2.7)
 
 """
-                
-
-
-    
-
-
 
