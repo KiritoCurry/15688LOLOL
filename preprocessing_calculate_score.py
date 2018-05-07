@@ -347,7 +347,7 @@ for each in train[0:1000]:
     train_rate.append(rate)
 
 train_scores = calculate_score(train_rate, positions)
-print(train_scores)
+# print(train_scores)
 
 # from sklearn.svm import SVC
 # from sklearn.preprocessing import MinMaxScaler
