@@ -315,7 +315,7 @@ def predict_result(match_id, match_data, verbose=False):
         print("train_accuracy:{:.3f}".format(hit/tot))
     
     ret = clf.predict(X_train[match_id].reshape([1,-1]))
-    return 'red' if ret == 0 else 'blue'
+    return 'red' if ret == 0 else 'blue', clf
 
 
 """
@@ -325,7 +325,7 @@ Input:
 Output:
     the lane has the most impact on the final outcome of the match
     """
-def which_lane(match_data, verbose=False):
+def which_lane(clf, match_data, verbose=False):
     lane_dict = {}
     for match in match_data:
         for lane in match['red']['by_lane'].keys():
@@ -354,11 +354,8 @@ def which_lane(match_data, verbose=False):
         X = lane_data[:,:3]
         y = lane_data[:,-1]
         scaler = MinMaxScaler()
-        clf = svm.SVC(C=1e10, max_iter=500, kernel='linear')
-    
         scaler.fit(X)
         X_train = scaler.transform(X)
-        clf.fit(X_train, y)
         ret = clf.predict(X_train)
         tot = len(ret)
         hit = 0
@@ -388,5 +385,5 @@ for c in champion:
 # lane = predict_lane()
 match_data = get_match_data(match, participants)
 # print(match_data[0])
-# predict_result(0, match_data, verbose=True)
-# print(which_lane(match_data, verbose=True))
+ret, clf = predict_result(0, match_data, verbose=True)
+print(which_lane(clf, match_data, verbose=True))
