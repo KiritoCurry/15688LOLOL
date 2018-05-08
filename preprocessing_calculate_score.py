@@ -13,6 +13,7 @@ def get_data(conn, table_name):
         res.append(d)
     return res
 
+# get a participant's position
 def get_position(p):
     if p[7] == 'BOT_LANE' or None:
         if p[6] == 'DUO':
@@ -29,6 +30,7 @@ def ban_rate(champion_id, team_ban):
     rate = champions.count(champion_id)/len(team_ban)
     return rate
 
+# Get all useful average data for a champion
 def champion_data(champion_id, participants):
     chosen_rate = {}
     win_rate = {}
@@ -150,8 +152,7 @@ def champion_data(champion_id, participants):
                     largest_killing_spree[pos].append(p[28])
                     largest_critical_strike[pos].append(p[29])
                     largest_multi_kill[pos].append(p[30])
-                    longest_living_time[pos].append(p[31])
-                    
+                    longest_living_time[pos].append(p[31])            
                     
     for r in chosen_rate:
         rate = chosen_rate[r]/len(participants)
@@ -215,23 +216,18 @@ def champion_data(champion_id, participants):
     
     return res
 
-participants = get_data(conn, 'Participants')
-champion = get_data(conn, 'Champion')
-ban = get_data(conn, 'team_ban')
-# kill_monster_event = get_data(conn, 'kill_monster_event')
-train = participants[0:10400]
-test = participants[10400:]
-train_data = []
-# test_data = {}
-for c in champion:
-    train_data.append(champion_data(c[0], train))
-# print(train_data)
+# 从这里开始是calculate_summoner_score section
 
-def calculate_rate(data, average):
+# Calculate the rate of difference bewteen summoner performance and average performance, divided by the summoner performance
+# 就是看玩家的表现超出/少于平均值多少倍
+def performance_rate(data, average):
     if data == 0:
         return 0
-    return (data-average)/data
+    return (data-average)/average
 
+# Calulate the relative score for each participant according to their position
+# data_set: the performance rate calculated for each participant
+# position: used to decide different weights
 def calculate_score(data_set, position):
     train_scores = []
     sums = []
@@ -241,6 +237,12 @@ def calculate_score(data_set, position):
     adc = []
     support = []
     
+    # 按顺序0-25: win_rate, kills, deaths, assists, physical_damage_to, physical_damage_taken, magic_damage_to, magic_damage_taken, true_damage_to,
+    # true_damage_taken, gold_earned, gold_spent, tower_kill, minions_kill, minions_kill_enemy, first_blood, total_heal,
+    # time_CCing, sight_ward, vision_ward, wards_killed, wards_placed, largest_killing_spree, largest_critical_strike, 
+    # largest_multi_kill, longest_living_time   
+    # gold_earned(d[10])没有计入评分，只考虑了gold_spent(d[11])
+
     for i in range(len(data_set)):
         d = data_set[i]
         try:
@@ -295,8 +297,6 @@ def calculate_score(data_set, position):
     support_max = max(support)
     support_min = min(support)
     
-#     print(adc_max, adc_min)
-#     print(support_max, support_min)
     for i in range(len(sums)):
         if sums[i] != 'unknown':
             if position[i] == 'JUNGLE':
@@ -320,33 +320,51 @@ def calculate_score(data_set, position):
             train_scores.append(0)
     return train_scores    
 
-train_rate = []
+
+# Main 方法
+participants = get_data(conn, 'Participants')
+champion = get_data(conn, 'Champion')
+ban = get_data(conn, 'team_ban')
+
+all_champion_datas = []
+for c in champion:
+    all_champion_datas.append(champion_data(c[0], participants))
+
+parti_performance_rate = []
 positions = []
 
 
 for each in train[0:1000]:
-    champion_datas = train_data[each[3]]
-    if each[6] in champion_datas:
-        champion_datas = champion_datas[each[6]]
+    this_champion_data = all_champion_datas[each[3]]
+    # ‘TOP' 'MID' 'JUNGLE'
+    if each[6] in this_champion_data:
+        this_champion_data = this_champion_data[each[6]]
         positions.append(each[6])
-    elif each[7] in champion_datas:
-        champion_datas = champion_datas[each[7]]
+    # 'adc' 'support'
+    elif each[7] in this_champion_data:
+        this_champion_data = this_champion_data[each[7]]
         positions.append(each[7])
     else:
-        train_rate.append(0)
+        # 现有数据里，这个英雄没有打过这个位置，所以没有平均值，无法评分
+        parti_performance_rate.append(0)
         positions.append(each[6])
         continue
+
+    # 按顺序: win_rate, kills, deaths, assists, physical_damage_to, physical_damage_taken, magic_damage_to, magic_damage_taken, true_damage_to,
+    # true_damage_taken, gold_earned, gold_spent, tower_kill, minions_kill, minions_kill_enemy, first_blood, total_heal,
+    # time_CCing, sight_ward, vision_ward, wards_killed, wards_placed, largest_killing_spree, largest_critical_strike, 
+    # largest_multi_kill, longest_living_time  
     parti_data = [each[5], each[12], each[13], each[14], each[-9], each[-8], each[-13], each[-12], each[-6], each[-5],
                  each[26], each[27], each[16], each[-11], each[-10], each[19], each[-8], each[-1], each[-11], each[-4]
                  , each[-3], each[-2], each[28], each[29], each[30], each[31]]
-    champion_datas = champion_datas[1:]
+    this_champion_data = this_champion_data[1:]
 
-    rate = []
-    for i in range(len(champion_datas)):
-        rate.append(calculate_rate(parti_data[i], list(champion_datas[i].values())[0]))   
-    train_rate.append(rate)
+    rate_for_one_parti = []
+    for i in range(len(this_champion_data)):
+        rate_for_each.append(performance_rate(parti_data[i], list(this_champion_data[i].values())[0]))   
+    parti_performance_rate.append(rate_for_each)
 
-train_scores = calculate_score(train_rate, positions)
+summoner_scores = calculate_score(parti_performance_rate, positions)
 # print(train_scores)
 
 # from sklearn.svm import SVC
