@@ -2,14 +2,16 @@ import preprocessing_calculate_score as process
 import sqlite3
 import pandas as pd
 import numpy as np
-# from sklearn.ensemble import RandomForestRegressor
-# from sklearn.datasets import make_regression
 
 conn = sqlite3.connect('lol.db')
 participants = process.get_data(conn, 'Participants')
 champions = process.get_data(conn, 'Champion')
 
-def get_teammate(champion_id, position, participants, champions):
+# Get all teammates this champion has ever grouped with, and this champion's performance of those matches
+# Team_mates & match_performance are corresponding, match_id is the first element of match_performance
+# Different positions have different evalutation of performance. Here consider minions number for JUNGLE, wards number
+# SUPPORT
+def get_teammate_and_performance(champion_id, position, participants, champions):
     data = []
     team_mates = []
     
@@ -35,20 +37,21 @@ def get_teammate(champion_id, position, participants, champions):
                     team.append([pos,p[3]])
         
         team_mates.append(team)
-    X = team_mates
-    Y = [([d[0]]+d[2:]) for d in data]
-    return X, Y
+    match_performance = [([d[0]]+d[2:]) for d in data]
+    return team_mates, match_performance
 
+# Normalize all data into range 0-5
 def normalize(data):
-    levels = []
+    norms = []
     maxi = max(data)
     mini = min(data)
     unit = (maxi - mini)/5
     for d in data:
         l = (d-mini)/unit
-        levels.append(l)
-    return levels
+        norms.append(l)
+    return norms
 
+# Get top three teams with highest normalized performance 
 def top_three(l, teammates):
     m = {}
     for a in l:
@@ -65,7 +68,7 @@ def top_three(l, teammates):
             
     return res
     
-
+# Normalize each performance criteria and add them together, select best team according to the normalized total performance 
 def best_performance_group(data, position, teammates):
     wins = [d[0] for d in data]
     kda = [d[1] for d in data]
@@ -73,32 +76,32 @@ def best_performance_group(data, position, teammates):
     time_CCing = [d[3] for d in data]
     wards = [d[4] for d in data]
     minions = [d[5] for d in data] 
-    levels = []
-    ave = []
+    norms = []
+    average = []
 
     if position == 'DUO_SUPPORT':
-        levels.extend([normalize(wins), normalize(kda), normalize(total_damage_to),
+        norms.extend([normalize(wins), normalize(kda), normalize(total_damage_to),
                        normalize(time_CCing),normalize(wards)])
         for i in range(len(wins)):
-            ave.append((wins[i]+kda[i]+total_damage_to[i]+time_CCing[i]+wards[i])/5)
-        return top_three(ave, teammates)
+            average.append((wins[i]+kda[i]+total_damage_to[i]+time_CCing[i]+wards[i])/5)
+        return top_three(average, teammates)
         
     
     elif position == 'JUNGLE':
-        levels.extend([normalize(wins), normalize(kda), normalize(total_damage_to),
+        norms.extend([normalize(wins), normalize(kda), normalize(total_damage_to),
                        normalize(time_CCing),normalize(minions)])
         for i in range(len(wins)):
-            ave.append((wins[i]+kda[i]+total_damage_to[i]+time_CCing[i]+minions[i])/5)
-        return top_three(ave, teammates)
+            average.append((wins[i]+kda[i]+total_damage_to[i]+time_CCing[i]+minions[i])/5)
+        return top_three(average, teammates)
     
     else:
-        levels.extend([normalize(wins), normalize(kda), normalize(total_damage_to),
+        norms.extend([normalize(wins), normalize(kda), normalize(total_damage_to),
                        normalize(time_CCing)])
         for i in range(len(wins)):
-            ave.append((wins[i]+kda[i]+total_damage_to[i]+time_CCing[i])/4)
-        return top_three(ave, teammates)
+            average.append((wins[i]+kda[i]+total_damage_to[i]+time_CCing[i])/4)
+        return top_three(average, teammates)
 
-teammates, data = get_teammate(0, 'TOP_LANE', participants, champions)
-comb = best_performance_group(data, 'TOP_LANE', teammates)
-print(comb)
+teammates, performance_data = get_teammate_and_performance(0, 'TOP_LANE', participants, champions)
+best_group = best_performance_group(performance_data, 'TOP_LANE', teammates)
+print(best_group)
 
