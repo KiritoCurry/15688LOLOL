@@ -219,11 +219,11 @@ def champion_data(champion_id, participants):
 # 从这里开始是calculate_summoner_score section
 
 # Calculate the rate of difference bewteen summoner performance and average performance, divided by the summoner performance
-# 就是看玩家的表现超出/少于平均值多少倍
+# 就是看玩家的表现超出/少于平均值 是他自己表现的多少倍
 def performance_rate(data, average):
     if data == 0:
         return 0
-    return (data-average)/average
+    return (data-average)/data
 
 # Calulate the relative score for each participant according to their position
 # data_set: the performance rate calculated for each participant
