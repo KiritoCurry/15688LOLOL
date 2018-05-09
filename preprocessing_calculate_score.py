@@ -359,58 +359,58 @@ def calculate_score(data_set, position):
 
 
 # Main 方法
-participants = get_data(conn, 'Participants')
-champion = get_data(conn, 'Champion')
-ban = get_data(conn, 'team_ban')
-
-print(champion)
-all_champion_datas = []
-for c in champion:
-    all_champion_datas.append(champion_data(c[0], participants))
-for i,d in enumerate(all_champion_datas):
-
-    if 'JUNGLE' in d:
-        print(champion[i][1],d['JUNGLE'][1]['win_rate'],d['JUNGLE'][0]['chosen_rate'])
-    else:
-        print(champion[i][1],'no junngel data!')
-print(len(all_champion_datas),all_champion_datas)
-print(len(all_champion_datas[0]['JUNGLE']))
-parti_performance_rate = []
-positions = []
-
-
-for each in train[0:1000]:
-    this_champion_data = all_champion_datas[each[3]]
-    # ‘TOP' 'MID' 'JUNGLE'
-    if each[6] in this_champion_data:
-        this_champion_data = this_champion_data[each[6]]
-        positions.append(each[6])
-    # 'adc' 'support'
-    elif each[7] in this_champion_data:
-        this_champion_data = this_champion_data[each[7]]
-        positions.append(each[7])
-    else:
-        # 现有数据里，这个英雄没有打过这个位置，所以没有平均值，无法评分
-        parti_performance_rate.append(0)
-        positions.append(each[6])
-        continue
-
-    # 按顺序: win_rate, kills, deaths, assists, physical_damage_to, physical_damage_taken, magic_damage_to, magic_damage_taken, true_damage_to,
-    # true_damage_taken, gold_earned, gold_spent, tower_kill, minions_kill, minions_kill_enemy, first_blood, total_heal,
-    # time_CCing, sight_ward, vision_ward, wards_killed, wards_placed, largest_killing_spree, largest_critical_strike,
-    # largest_multi_kill, longest_living_time
-    parti_data = [each[5], each[12], each[13], each[14], each[-9], each[-8], each[-13], each[-12], each[-6], each[-5],
-                 each[26], each[27], each[16], each[-11], each[-10], each[19], each[-8], each[-1], each[-11], each[-4]
-                 , each[-3], each[-2], each[28], each[29], each[30], each[31]]
-    this_champion_data = this_champion_data[1:]
-
-    rate_for_one_parti = []
-    for i in range(len(this_champion_data)):
-        rate_for_each.append(performance_rate(parti_data[i], list(this_champion_data[i].values())[0]))
-    parti_performance_rate.append(rate_for_each)
-
-summoner_scores = calculate_score(parti_performance_rate, positions)
-print(train_scores)
+# participants = get_data(conn, 'Participants')
+# champion = get_data(conn, 'Champion')
+# ban = get_data(conn, 'team_ban')
+# 
+# print(champion)
+# all_champion_datas = []
+# for c in champion:
+#     all_champion_datas.append(champion_data(c[0], participants))
+# for i,d in enumerate(all_champion_datas):
+# 
+#     if 'JUNGLE' in d:
+#         print(champion[i][1],d['JUNGLE'][1]['win_rate'],d['JUNGLE'][0]['chosen_rate'])
+#     else:
+#         print(champion[i][1],'no junngel data!')
+# print(len(all_champion_datas),all_champion_datas)
+# print(len(all_champion_datas[0]['JUNGLE']))
+# parti_performance_rate = []
+# positions = []
+# 
+# 
+# for each in train[0:1000]:
+#     this_champion_data = all_champion_datas[each[3]]
+#     # ‘TOP' 'MID' 'JUNGLE'
+#     if each[6] in this_champion_data:
+#         this_champion_data = this_champion_data[each[6]]
+#         positions.append(each[6])
+#     # 'adc' 'support'
+#     elif each[7] in this_champion_data:
+#         this_champion_data = this_champion_data[each[7]]
+#         positions.append(each[7])
+#     else:
+#         # 现有数据里，这个英雄没有打过这个位置，所以没有平均值，无法评分
+#         parti_performance_rate.append(0)
+#         positions.append(each[6])
+#         continue
+# 
+#     # 按顺序: win_rate, kills, deaths, assists, physical_damage_to, physical_damage_taken, magic_damage_to, magic_damage_taken, true_damage_to,
+#     # true_damage_taken, gold_earned, gold_spent, tower_kill, minions_kill, minions_kill_enemy, first_blood, total_heal,
+#     # time_CCing, sight_ward, vision_ward, wards_killed, wards_placed, largest_killing_spree, largest_critical_strike,
+#     # largest_multi_kill, longest_living_time
+#     parti_data = [each[5], each[12], each[13], each[14], each[-9], each[-8], each[-13], each[-12], each[-6], each[-5],
+#                  each[26], each[27], each[16], each[-11], each[-10], each[19], each[-8], each[-1], each[-11], each[-4]
+#                  , each[-3], each[-2], each[28], each[29], each[30], each[31]]
+#     this_champion_data = this_champion_data[1:]
+# 
+#     rate_for_one_parti = []
+#     for i in range(len(this_champion_data)):
+#         rate_for_each.append(performance_rate(parti_data[i], list(this_champion_data[i].values())[0]))
+#     parti_performance_rate.append(rate_for_each)
+# 
+# summoner_scores = calculate_score(parti_performance_rate, positions)
+# print(train_scores)
 
 from sklearn.svm import SVC
 # from sklearn.preprocessing import MinMaxScaler
