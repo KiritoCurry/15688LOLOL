@@ -6,7 +6,6 @@ from sklearn.linear_model import BayesianRidge
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 conn = sqlite3.connect('lol.db')
-
 def get_data(conn, table_name):
     res = []
     query = 'SELECT * FROM ' + table_name
@@ -16,6 +15,7 @@ def get_data(conn, table_name):
         res.append(d)
     return res
 
+# get a participant's position
 def get_position(p):
     if p[7] == 'BOT_LANE' or None:
         if p[6] == 'DUO':
@@ -32,6 +32,7 @@ def ban_rate(champion_id, team_ban):
     rate = champions.count(champion_id)/len(team_ban)
     return rate
 
+# Get all useful average data for a champion
 def champion_data(champion_id, participants):
     chosen_rate = {}
     win_rate = {}
@@ -132,17 +133,17 @@ def champion_data(champion_id, participants):
                     kill[pos].append(p[12])
                     death[pos].append(p[13])
                     assist[pos].append(p[14])
-                    physical_damage_to[pos].append(p[-9])
-                    physical_damage_taken[pos].append(p[-8])
-                    magic_damage_to[pos].append(p[-13])
-                    magic_damage_taken[pos].append(p[-12])
+                    physical_damage_to[pos].append(p[36])
+                    physical_damage_taken[pos].append(p[37])
+                    magic_damage_to[pos].append(p[32])
+                    magic_damage_taken[pos].append(p[33])
                     true_damage_to[pos].append(p[-6])
                     true_damage_taken[pos].append(p[-5])
                     gold_earned[pos].append(p[26])
                     gold_spent[pos].append(p[27])
                     tower_kill[pos].append(p[16])
-                    minions_kill[pos].append(p[-11])
-                    minions_kill_enemy[pos].append(p[-10])
+                    minions_kill[pos].append(p[34])
+                    minions_kill_enemy[pos].append(p[35])
                     first_blood[pos].append(p[19])
                     total_heal[pos].append(p[-8])
                     time_CCing[pos].append(p[-1])
@@ -153,8 +154,7 @@ def champion_data(champion_id, participants):
                     largest_killing_spree[pos].append(p[28])
                     largest_critical_strike[pos].append(p[29])
                     largest_multi_kill[pos].append(p[30])
-                    longest_living_time[pos].append(p[31])
-                    
+                    longest_living_time[pos].append(p[31])            
                     
     for r in chosen_rate:
         rate = chosen_rate[r]/len(participants)
