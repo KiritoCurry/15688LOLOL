@@ -98,7 +98,7 @@ def champion_data(champion_id, participants):
                     
                     
                 else:
-                    chosen_rate[pos] = 1
+                    chosen_rate[pos] = 0
                     win_rate[pos] = []
                     kill[pos] = []
                     death[pos] = []
@@ -236,53 +236,85 @@ def calculate_score(data_set, position):
     mid = []
     adc = []
     support = []
+    duo=[]
     
-    # 按顺序0-25: win_rate, kills, deaths, assists, physical_damage_to, physical_damage_taken, magic_damage_to, magic_damage_taken, true_damage_to,
-    # true_damage_taken, gold_earned, gold_spent, tower_kill, minions_kill, minions_kill_enemy, first_blood, total_heal,
-    # time_CCing, sight_ward, vision_ward, wards_killed, wards_placed, largest_killing_spree, largest_critical_strike, 
-    # largest_multi_kill, longest_living_time   
+    # 按顺序0-25:
+    # 0.win_rate
+    # 1.kills
+    # 2.deaths
+    # 3.assists
+    # 4. physical_damage_to
+    # 5. physical_damage_taken
+    # 6. magic_damage_to
+    # 7. magic_damage_taken
+    # 8. true_damage_to
+    # 9. true_damage_taken
+    # 10. gold_earned
+    # 11. gold_spent
+    # 12. tower_kill
+    # 13. minions_kill
+    # 14. minions_kill_enemy
+    # 15. first_blood
+    # 16. total_heal
+    # 17. time_CCing
+    # 18. sight_ward
+    # 19. vision_ward
+    # 20. wards_killed
+    # 21. wards_placed
+    # 22. largest_killing_spree
+    # 23. largest_critical_strike
+    # 24. largest_multi_kill
+    # 25. longest_living_time
     # gold_earned(d[10])没有计入评分，只考虑了gold_spent(d[11])
 
     for i in range(len(data_set)):
         d = data_set[i]
         try:
-            if position[i] == 'JUNGLE':
-                s = 30*d[0]+30*d[1]-20*d[2]+30*d[3] +30*(d[4]+d[6]+d[8])+ 10*(d[5]+d[7]+d[9])
-                +6*d[11]+d[12]+ 30*d[13]+40*d[14]+d[15]+d[16]+20*d[17]
-                +(d[18]+d[19]+d[20]+d[21])+5*d[22]+5*d[23]+5*d[24]+5*d[25]
+            # This is actually DUO, use this as default for others, all weights are among the least ones in all positions
+            if position[i]==None:
+                s = 30 * d[0] + 20 * d[1] - 23 * d[2] + 10 * d[3] + 10 * (d[4] + d[6] + d[8]) - 2 * (
+                        d[5] + d[7] + d[9])
+                +4 * d[10] + d[11] / d[10] + 10 * d[12] + 5 * d[13] + 4 * d[14] + 3 * d[15] + 2 * d[16] + 20 * d[17]
+                +3 * (d[18] + d[19] + d[20] + d[21]) + 5 * d[22] + 5 * d[23] + 3 * d[24] + 5 * d[25]
+                sums.append(s)
+                duo.append(s)
+
+            elif position[i] == 'JUNGLE':
+                s = 30*d[0]+28*d[1]-20*d[2]+25*d[3]+28*(d[4]+d[6]+d[8])+ 15*(d[5]+d[7]+d[9])
+                +5*d[10]+d[11]/d[10]+10*d[12]+ 15*d[13]+40*d[14]+6*d[15]+2*d[16]+20*d[17]
+                +15*(d[18]+d[19]+d[20]+d[21])+10*d[22]+15*d[23]+5*d[24]+10*d[25]
                 sums.append(s)
                 jungle.append(s)
 
             elif position[i] == 'TOP_LANE':
-                s = 30*d[0]+20*d[1]-20*d[2]+20*d[3] + 20*(d[4]+d[6]+d[8])+10*(d[5]+d[7]+d[9])
-                +6*d[11] +d[12]+d[13]+8*d[14] +6*d[15]+d[16]+20*d[17]
-                +(d[18]+d[19]+d[20]+d[21])+5*d[22]+5*d[23]+5*d[24]+5*d[25]
+                s = 30*d[0]+30*d[1]-23*d[2]+15*d[3] + 30*(d[4]+d[6]+d[8]) + 17*(d[5]+d[7]+d[9])
+                +6*d[10]+d[11]/d[10] + 10*d[12]+10*d[13]+8*d[14] +6*d[15]+2*d[16]+20*d[17]
+                +5*(d[18]+d[19]+d[20]+d[21])+15*d[22]+20*d[23]+5*d[24]+10*d[25]
                 sums.append(s)
                 top.append(s)
 
             elif position[i] == 'MID_LANE':
-                s = 30*d[0]+30*d[1]-20*d[2]+20*d[3] +30*(d[4]+d[6]+d[8])+ 10*(d[5]+d[7]+d[9])
-                +6*d[11] +d[12]+d[13]+5*d[14] +6*d[15]+d[16]+30*d[17]
-                +(d[18]+d[19]+d[20]+d[21])+5*d[22]+5*d[23]+5*d[24]+5*d[25]
+                s = 30*d[0]+30*d[1]-23*d[2]+20*d[3] + 30*(d[4]+d[6]+d[8])+ 5*(d[5]+d[7]+d[9])
+                +6*d[10]+d[11]/d[10] + 10*d[12]+10*d[13]+8*d[14] +6*d[15]+2*d[16]+30*d[17]
+                +10*(d[18]+d[19]+d[20]+d[21])+15*d[22]+20*d[23]+5*d[24]+15*d[25]
                 sums.append(s)
                 mid.append(s)
 
             elif position[i] == 'DUO_CARRY':
-                s = 30*d[0]+30*d[1]-25*d[2]+10*d[3]+30*(d[4]+d[6]+d[8])+10*(d[5]+d[7]+d[9])
-                +8*d[11] +d[12]+d[13]+6*d[14] +6*d[15]+d[16]+20*d[17]
-                +(d[18]+d[19]+d[20]+d[21])+20*d[22]+20*d[23]+5*d[24]+20*d[25]
+                s = 30*d[0]+30*d[1]-23*d[2]+10*d[3]+30*(d[4]+d[6]+d[8])-2*(d[5]+d[7]+d[9])
+                +6*d[10]+d[11]/d[10] + 10*d[12]+10*d[13]+6*d[14] +6*d[15]+d[16]+20*d[17]
+                +3*(d[18]+d[19]+d[20]+d[21])+15*d[22]+20*d[23]+5*d[24]+20*d[25]
                 sums.append(s)
                 adc.append(s)
 
             elif position[i] == 'DUO_SUPPORT':
-                s = 30*d[0]+20*d[1]-10*d[2]+30*d[3]+10*(d[4]+d[6]+d[8])+ 20*(d[5]+d[7]+d[9])
-                +4*d[11] +6*d[12]+d[13]+6*d[14] +6*d[15]+10*d[16]+30*d[17]
-                +30*(d[18]+d[19]+d[20]+d[21])+5*d[22]+5*d[23]+5*d[24]+5*d[25]
+                s = 30*d[0]+20*d[1]-15*d[2]+30*d[3]+10*(d[4]+d[6]+d[8])+ 20*(d[5]+d[7]+d[9])
+                +4*d[10]+d[11]/d[10] + 10*d[12]+5*d[13]+4*d[14] +3*d[15]+15*d[16]+30*d[17]
+                +30*(d[18]+d[19]+d[20]+d[21])+5*d[22]+5*d[23]+3*d[24]+5*d[25]
                 sums.append(s)
                 support.append(s)
             else:
                 sums.append('unknown')
-
         except TypeError:
             sums.append('unknown')
             
@@ -296,10 +328,15 @@ def calculate_score(data_set, position):
     adc_min = min(adc)
     support_max = max(support)
     support_min = min(support)
+    duo_max=max(duo)
+    duo_min=min(duo)
     
     for i in range(len(sums)):
         if sums[i] != 'unknown':
-            if position[i] == 'JUNGLE':
+            if position[i] ==None:
+                unit = 98 / (duo_max - duo_min)
+                train_scores.append((sums[i] - duo_min) * unit + 1)
+            elif position[i] == 'JUNGLE':
                 unit = 98/(jungle_max-jungle_min)
                 train_scores.append((sums[i]-jungle_min)*unit + 1)
             elif position[i] == 'TOP_LANE':
@@ -326,10 +363,18 @@ participants = get_data(conn, 'Participants')
 champion = get_data(conn, 'Champion')
 ban = get_data(conn, 'team_ban')
 
+print(champion)
 all_champion_datas = []
 for c in champion:
     all_champion_datas.append(champion_data(c[0], participants))
+for i,d in enumerate(all_champion_datas):
 
+    if 'JUNGLE' in d:
+        print(champion[i][1],d['JUNGLE'][1]['win_rate'],d['JUNGLE'][0]['chosen_rate'])
+    else:
+        print(champion[i][1],'no junngel data!')
+print(len(all_champion_datas),all_champion_datas)
+print(len(all_champion_datas[0]['JUNGLE']))
 parti_performance_rate = []
 positions = []
 
@@ -352,8 +397,8 @@ for each in train[0:1000]:
 
     # 按顺序: win_rate, kills, deaths, assists, physical_damage_to, physical_damage_taken, magic_damage_to, magic_damage_taken, true_damage_to,
     # true_damage_taken, gold_earned, gold_spent, tower_kill, minions_kill, minions_kill_enemy, first_blood, total_heal,
-    # time_CCing, sight_ward, vision_ward, wards_killed, wards_placed, largest_killing_spree, largest_critical_strike, 
-    # largest_multi_kill, longest_living_time  
+    # time_CCing, sight_ward, vision_ward, wards_killed, wards_placed, largest_killing_spree, largest_critical_strike,
+    # largest_multi_kill, longest_living_time
     parti_data = [each[5], each[12], each[13], each[14], each[-9], each[-8], each[-13], each[-12], each[-6], each[-5],
                  each[26], each[27], each[16], each[-11], each[-10], each[19], each[-8], each[-1], each[-11], each[-4]
                  , each[-3], each[-2], each[28], each[29], each[30], each[31]]
@@ -361,13 +406,13 @@ for each in train[0:1000]:
 
     rate_for_one_parti = []
     for i in range(len(this_champion_data)):
-        rate_for_each.append(performance_rate(parti_data[i], list(this_champion_data[i].values())[0]))   
+        rate_for_each.append(performance_rate(parti_data[i], list(this_champion_data[i].values())[0]))
     parti_performance_rate.append(rate_for_each)
 
 summoner_scores = calculate_score(parti_performance_rate, positions)
-# print(train_scores)
+print(train_scores)
 
-# from sklearn.svm import SVC
+from sklearn.svm import SVC
 # from sklearn.preprocessing import MinMaxScaler
 # scaler = MinMaxScaler()
 # scaler.fit(X)

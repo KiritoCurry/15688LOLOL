@@ -4,6 +4,7 @@ import math
 import time
 import random
 from collections import Counter
+import numpy as np
 
 import cassiopeia as cass
 from cassiopeia import Summoner, Match, Champions
@@ -26,3 +27,6 @@ conn.commit()
 # b=Counter(a)
 # c=b.most_common(1)
 # print(c[0][0])
+a=np.array([1,2,3,4])
+b=['a','sd',123,12345,123456,456]
+print(type(int(a[0])))
