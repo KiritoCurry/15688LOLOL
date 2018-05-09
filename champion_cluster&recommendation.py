@@ -10,7 +10,7 @@ Use sklearn.AgglomerativeClustering for clustering, Agglomerative is a better un
 Get all the champions and their match data
 Return a dict contain the labels as key and corresponding champions as values
 """
-def clusterChampions(cluster_num,conn):
+def clusterChampions(cluster_num,conn,store_type=0):
     #print('enter')
     # 1. Get all champions with their match statistic and forms the features that're fed into the cluster
     champion = get_data(conn, 'Champion')
@@ -44,9 +44,9 @@ def clusterChampions(cluster_num,conn):
     clusters={}
     for i, label in enumerate(agg.labels_):
         if label not in clusters:
-            clusters[int(label)]=[champion[i][0]]
+            clusters[int(label)]=[champion[i][store_type]]
         else:
-            clusters[int(label)].append(champion[i][0])
+            clusters[int(label)].append(champion[i][store_type])
     return clusters
 
 """
@@ -174,7 +174,7 @@ def printRecommendResult(res):
     for pos in res:
         heros=res[pos]
         num=len(heros)
-        output="Top" + str(num) + "recommended champions in "+pos+":\t"+", ".join(heros)
+        output="Top " + str(num) + "recommended champions in "+pos+":\t"+", ".join(heros)
         result.append(output)
     return '\n'.join(result)
 
@@ -182,14 +182,12 @@ def printRecommendResult(res):
 
 if __name__=='__main__':
     conn = sqlite3.connect('lol.db')
-    clusters=clusterChampions(6,conn)
+    clusters=clusterChampions(6,conn,1)
     count=0
     for c in clusters:
+        print('cluster',c,clusters[c])
         count+=len(clusters[c])
-    print('cluster num',count)
-    print(len(clusters))
-    print(clusters)
-    for c in clusters:
-        print(c,type(c)==int)
-        break
-    print(printRecommendResult(RecommendChampionsForUser(35205845,5,conn)))
+    print('clustered champion num',count)
+    print('cluster number:', len(clusters))
+
+    print(printRecommendResult(RecommendChampionsForUser(82119724,5,conn)))
